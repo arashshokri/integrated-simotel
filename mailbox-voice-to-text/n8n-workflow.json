@@ -1,0 +1,490 @@
+{
+  "name": "Mailbox Voice To Text - Eboo - Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "mailbox-voice-to-text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1280,
+        160
+      ],
+      "id": "Webhook_from_Cloud",
+      "name": "Webhook from Cloud",
+      "webhookId": "mailbox-voice-to-text"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "event_name_check",
+              "leftValue": "={{ $json.query.event_name }}",
+              "rightValue": "VoiceMail",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "state_check",
+              "leftValue": "={{ $json.query.state }}",
+              "rightValue": "SUCCESS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filename_check",
+              "leftValue": "={{ $json.query.filename }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1050,
+        160
+      ],
+      "id": "Validate_Voicemail",
+      "name": "Validate VoiceMail"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://panel.hostedpbx.ir/api/v4.1/voicemails/audio/download",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-APIKEY",
+              "value": "__PANEL_API_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Basic __PANEL_API_KEY__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"file\": \"{{ $('Webhook from Cloud').item.json.query.filename }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -800,
+        80
+      ],
+      "id": "Create_Link",
+      "name": "Create Link",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data.audioLink }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-APIKEY",
+              "value": "__PANEL_API_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer __PANEL_API_KEY__"
+            },
+            {
+              "name": "Accept",
+              "value": "application/octet-stream"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        80
+      ],
+      "id": "Link_To_Binary",
+      "name": "Link to Binary",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.eboo.ir/api/ocr/getway",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__EBOO_TOKEN__"
+            },
+            {
+              "name": "command",
+              "value": "addfile"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "filehandle",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        80
+      ],
+      "id": "Get_FileToken",
+      "name": "Get FileToken"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.eboo.ir/api/ocr/getway",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__EBOO_TOKEN__"
+            },
+            {
+              "name": "command",
+              "value": "convert"
+            },
+            {
+              "name": "filetoken",
+              "value": "={{ $json.FileToken }}"
+            },
+            {
+              "name": "language",
+              "value": "fa"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        80
+      ],
+      "id": "Convert",
+      "name": "Convert"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        80
+      ],
+      "id": "Wait_For_Eboo",
+      "name": "Wait",
+      "webhookId": "wait-for-eboo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.eboo.ir/api/ocr/getway",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__EBOO_TOKEN__"
+            },
+            {
+              "name": "command",
+              "value": "checkconvert"
+            },
+            {
+              "name": "filetoken",
+              "value": "={{ $('Get FileToken').item.json.FileToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        80
+      ],
+      "id": "Check_Eboo_Output",
+      "name": "Check Eboo Output",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "eboo_ready_check",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Data Not Found Yet",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        80
+      ],
+      "id": "Is_Eboo_Ready",
+      "name": "Is Eboo Ready?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhook = $('Webhook from Cloud').first().json.query || {};\nconst eboo = $json || {};\n\nconst transcription =\n  eboo.Output ||\n  eboo.output ||\n  eboo.Text ||\n  eboo.text ||\n  eboo.Result ||\n  eboo.result ||\n  '';\n\nconst status = eboo.Status || eboo.status || '-';\n\nconst caller = webhook.caller || '-';\nconst number = webhook.number || '-';\nconst duration = webhook.duration || '-';\nconst date = webhook.date || '-';\nconst filename = webhook.filename || '-';\nconst cuid = webhook.cuid || '-';\nconst mailboxId = webhook.id || '-';\nconst state = webhook.state || '-';\n\nconst cleanText = String(transcription || '').trim();\n\nconst telegramText = [\n  'پیام صوتی جدید',\n  '',\n  `داخلی: ${number}`,\n  `تماس‌گیرنده: ${caller}`,\n  `مدت پیام: ${duration} ثانیه`,\n  `تاریخ: ${date}`,\n  `شناسه تماس: ${cuid}`,\n  `شناسه Mailbox: ${mailboxId}`,\n  `وضعیت Mailbox: ${state}`,\n  `فایل: ${filename}`,\n  `وضعیت تبدیل Eboo: ${status}`,\n  '',\n  'متن تبدیل‌شده:',\n  cleanText || 'متنی از فایل صوتی استخراج نشد.'\n].join('\\n');\n\nreturn [\n  {\n    json: {\n      telegram_text: telegramText,\n      transcription: cleanText,\n      caller,\n      number,\n      duration,\n      date,\n      filename,\n      cuid,\n      mailbox_id: mailboxId,\n      mailbox_state: state,\n      eboo_status: status,\n      eboo_raw: eboo,\n      webhook_query: webhook\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "Build_Telegram_Message",
+      "name": "Build Telegram Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot__TELEGRAM_BOT_TOKEN__/sendMessage",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "__TELEGRAM_CHAT_ID__"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.telegram_text }}"
+            },
+            {
+              "name": "disable_web_page_preview",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "Send_Telegram",
+      "name": "Send Telegram"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $json.query || {};\nreturn [\n  {\n    json: {\n      ignored: true,\n      reason: 'Invalid webhook payload. Expected event_name=VoiceMail, state=SUCCESS and filename.',\n      query\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        320
+      ],
+      "id": "Invalid_Webhook",
+      "name": "Invalid Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook from Cloud": {
+      "main": [
+        [
+          {
+            "node": "Validate VoiceMail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VoiceMail": {
+      "main": [
+        [
+          {
+            "node": "Create Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Link": {
+      "main": [
+        [
+          {
+            "node": "Link to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link to Binary": {
+      "main": [
+        [
+          {
+            "node": "Get FileToken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get FileToken": {
+      "main": [
+        [
+          {
+            "node": "Convert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Eboo Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Eboo Output": {
+      "main": [
+        [
+          {
+            "node": "Is Eboo Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Eboo Ready?": {
+      "main": [
+        [
+          {
+            "node": "Build Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-13T00:00:00.000Z",
+  "versionId": "1"
+}

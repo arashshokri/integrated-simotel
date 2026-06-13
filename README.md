@@ -1,18 +1,7 @@
-# Integrated Simotel
+﻿# Integrated Simotel
 
-مخزن integrationهای کوچک مرتبط با Simotel / HostedPBX / n8n.
+This directory contains small integration projects created for Simotel and HostedPBX.
 
-## ساختار
+Each subdirectory includes an independent integration workflow, script, or helper project related to connecting external services with Simotel or HostedPBX.
 
-```text
-integrated-simotel/
-  mailbox-voice-to-text/
-    n8n-workflow.json
-    README.md
-    .env.example
-```
-
-## قانون امنیتی
-
-توکن‌ها، API keyها، bot tokenها و chat id واقعی نباید داخل Git commit شوند.
-در workflow از placeholder استفاده شده است.
+These projects are kept here to make integrations easier to organize, maintain, and reuse.
